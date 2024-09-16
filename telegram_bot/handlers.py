@@ -5,13 +5,30 @@ from aiogram import types, Router
 from aiogram.fsm.context import FSMContext
 from dotenv import load_dotenv
 from fastapi_auth.schemas import UserCreate, UserRead
-from telegram_bot.states import CreateNote, Register, Login
 import re
 import requests
 from fastapi_server.router import *
+from fastapi_server.schemas import TagAdd
 from main import fastapi_users
 from redis.asyncio import Redis
-import pickle
+from aiogram.fsm.state import StatesGroup, State
+
+class Register(StatesGroup):
+    email = State()
+    password = State()
+
+class Login(StatesGroup):
+    email = State()
+    password = State()
+
+class CreateNote(StatesGroup):
+    name = State()
+    content = State()
+    tags = State()
+
+class SearchNote(StatesGroup):
+    tags = State()
+
 
 redis = Redis()
 message_router = Router()
@@ -136,34 +153,70 @@ async def add_one_note_text(message : types.Message, state : FSMContext):
 async def add_one_note_tags(message : types.Message, state : FSMContext):
     await state.update_data(content = message.text)
     await state.set_state(CreateNote.tags)
-    value = bytearray(pickle.dumps([]))
+    value = bytes([])
     await redis.set(name=str(message.from_user.id) + "tags", value=value)
     await message.answer(text="Enter each tag by a single message. To stop type ready.")
 
 @message_router.message(CreateNote.tags)
 async def add_one_note_end(message : types.Message, state : FSMContext):
     if message.text != "ready":
-        tag = await state.update_data(content = message.text)
+        new_tag = message.text
+        data = await state.get_data()
+        if 'tags' not in data.keys():
+            data = [new_tag]
+        else:
+            old_tags = data['tags']
+            data = old_tags + [new_tag]
+        await state.update_data(tags = data)
         await message.answer(text=f"Tag {message.text} added")
-        value = await redis.get(name=str(message.from_user.id) + "tags")
-        value = pickle.loads(value)
-        value.append(tag)
-        value = bytearray(pickle.dumps(value))
-        await redis.set(name=str(message.from_user.id) + "tags", value=value)
     else:
-        tags = await redis.get(name=str(message.from_user.id)+"tags")
-        tags = pickle.loads(tags)
+
         value = await redis.get(name = str(message.from_user.id))
         value = str(value, encoding='utf-8')
-        print(tags)
-        new_note = NoteAdd(CreateNote.name, CreateNote.content, tags)
+        data = await state.get_data()
+        new_tags = []
+        for tag in data['tags']:
+            tmp = TagAdd(name=tag)
+            new_tags.append(tmp)
+        new_note = NoteAdd(name = data['name'], content = data['content'], tags = new_tags)
         link = SITE_URL + "/notes"
         r = requests.post(link, data=new_note.json(), cookies={'jwt':value})
         if r.status_code != 200:
             await message.answer('Validation error, or you are not authorized.')
         else:
             await message.answer(r.text)
+        await state.clear()
 
+@message_router.message(Command('find_tags'))
+async def find_tags(message : types.Message, state : FSMContext):
+    await state.set_state(SearchNote.tags)
+    await message.answer(text="Enter each tag by a single message. To stop type ready.")
+
+@message_router.message(SearchNote.tags)
+async def find_tags_end(message : types.Message, state : FSMContext):
+    text = message.text
+    if text != "ready":
+        new_tag = message.text
+        data = await state.get_data()
+        if 'tags' not in data.keys():
+            data = [new_tag]
+        else:
+            old_tags = data['tags']
+            data = old_tags + [new_tag]
+        await state.update_data(tags = data)
+        await message.answer(text=f"Tag {message.text} added")
+    else:
+        data = await state.get_data()
+        search = TagSearch(tags=data['tags'])
+        link = SITE_URL + "/notes/search"
+        value = await redis.get(name = str(message.from_user.id))
+        value = str(value, encoding='utf-8')
+        r = requests.post(link, data=search.json(), cookies={'jwt':value})
+        if r.status_code != 200:
+            await message.answer('Validation error, or you are not authorized.')
+        else:
+            await message.answer(r.text)
+        await state.clear()
 
 
 
