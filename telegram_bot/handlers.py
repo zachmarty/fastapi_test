@@ -10,10 +10,10 @@ import re
 import requests
 from fastapi_server.router import *
 from main import fastapi_users
+from telegram_main import redis
 
 reg_router = fastapi_users.get_register_router(UserRead, UserCreate)
 log_router = fastapi_users.get_auth_router(auth_backend)
-
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 SITE_URL = os.getenv("SITE_URL")
@@ -22,8 +22,9 @@ HELP_COMMAND = f"Hi!\nList of awailable commands:\n/register for registration\n\
 /login for login\n/logout for logout\n/get_all to get all notes\n/get_one to get one by id\n\
 /add_one to add one note\n/fix_one to change note by its id\n/delete to delete note by id\n\
 /find_tags to find notes by tags"
-cookie_jwt = ''
+cookie_jwt = ""
 message_router = Router()
+
 
 @message_router.message(Command(commands=["help", "start"]))
 async def handle_start(message: types.Message):
@@ -50,17 +51,20 @@ async def register_pass(message: types.Message, state: FSMContext):
 async def register_finish(message: types.Message, state: FSMContext):
     await state.update_data(password=message.text)
     data = await state.get_data()
-    await message.answer(text=SITE_URL)
     link = SITE_URL + "/auth/register"
-    await message.answer(text=link)
     try:
-        r = requests.post(link)
-        await message.answer(
-            f"Registration completed.\nYour data is {data['email']} {data['password']}.\nNow you can login /login."
+        r = requests.post(
+            link, json={"email": data["email"], "password": data["password"]}
         )
-    except requests.exceptions.ConnectionError as e: 
+        response = r.json()
+        if r.status_code != 201:
+            await message.answer(response["detail"][0]["msg"])
+        else:
+            await message.answer(
+                f"Registration completed.\nYour data is {data['email']} {data['password']}.\nNow you can login /login."
+            )
+    except requests.exceptions.ConnectionError as e:
         await message.answer(text="Something went wrong.")
-        await message.answer(text=f"{link}\n{str(e)}")
     await state.clear()
 
 
@@ -76,7 +80,7 @@ async def login_password(message: types.Message, state: FSMContext):
     if not re.match(EMAIL_REGEX, message.text):
         await message.answer("Wrong email. Try again.")
     else:
-        await state.set_state(Register.password)
+        await state.set_state(Login.password)
         await message.answer(text="Enter your пароль.")
 
 
@@ -84,10 +88,34 @@ async def login_password(message: types.Message, state: FSMContext):
 async def login_finish(message: types.Message, state: FSMContext):
     await state.update_data(password=message.text)
     data = await state.get_data()
-    await message.answer(
-        f"Login completed.\nYour data is {data['email']} {data['password']}.\nNow you can login /login."
-    )
+    link = SITE_URL + "/auth/jwt/login"
+    try:
+        session = requests.Session()
+        r = session.post(
+            link, data={"username": data["email"], "password": data["password"]}
+        )
+        cookie_jwt = session.cookies.get_dict()["jwt"]
+        await redis.set(name=str(message.from_user.id), value=cookie_jwt)
+        if r.status_code != 204:
+            await message.answer("Login error")
+        else:
+            await message.answer(f"Login completed.You are now can watch notes.")
+            
+    except requests.exceptions.ConnectionError as e:
+        await message.answer(text="Something went wrong.")
     await state.clear()
+
+
+@message_router.message(Command("get_all"))
+async def get_all_notes(message: types.Message):
+    value = await redis.get(name = str(message.from_user.id))
+    await message.answer(value)
+    if cookie_jwt == "":
+        await message.answer("You are not authorized")
+        return
+    link = SITE_URL + "/notes"
+    r = requests.get(link, params={"jwt": cookie_jwt})
+    await message.answer(r.text)
 
 
 @message_router.message()

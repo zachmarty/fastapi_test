@@ -3,22 +3,22 @@ import logging
 from pathlib import Path
 from aiogram import Bot, Dispatcher
 import os
+from aioredis import Redis
 from dotenv import load_dotenv
-import requests
 from telegram_bot.handlers import message_router
+from aiogram.fsm.storage.redis import RedisStorage
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
-s = requests.session()
-s.verify = "./CAs"
 TOKEN = os.getenv("BOT_TOKEN")
 SITE_URL = os.getenv("SITE_URL")
-cookie_jwt = ''
+cookie_jwt = ""
 
 bot = Bot(token=TOKEN)
-dp = Dispatcher()
+redis = Redis()
+dp = Dispatcher(storage=RedisStorage(redis = redis))
 dp.include_router(message_router)
-
 logging.basicConfig(level=logging.INFO)
+
 dp.start_polling(bot)
 
 

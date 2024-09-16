@@ -17,6 +17,9 @@ python-dotenv = "^1.0.1"
 fastapi-users = {extras = ["sqlalchemy"], version = "^13.0.0"}
 aiogram = "^3.13.0"
 requests = "^2.32.3"
+redis = "^5.0.8"
+apscheduler = "^3.10.4"
+aioredis = "^2.0.1"
 
 
 [build-system]
