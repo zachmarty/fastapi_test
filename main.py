@@ -9,14 +9,16 @@ from fastapi_server.models import create_tables, drop_tables
 from fastapi_server.router import router as notes_router
 from fastapi_auth.auth import auth_backend
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await drop_tables()
     await create_tables()
     await drop_user_db()
     await create_db_and_tables()
-    print('created')
+    print("created")
     yield
+
 
 fastapi_users = fastapi_users.FastAPIUsers[User, int](
     get_user_manager,
