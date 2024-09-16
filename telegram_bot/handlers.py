@@ -5,13 +5,16 @@ from aiogram import types, Router
 from aiogram.fsm.context import FSMContext
 from dotenv import load_dotenv
 from fastapi_auth.schemas import UserCreate, UserRead
-from telegram_bot.states import Register, Login
+from telegram_bot.states import CreateNote, Register, Login
 import re
 import requests
 from fastapi_server.router import *
 from main import fastapi_users
-from telegram_main import redis
+from redis.asyncio import Redis
+import pickle
 
+redis = Redis()
+message_router = Router()
 reg_router = fastapi_users.get_register_router(UserRead, UserCreate)
 log_router = fastapi_users.get_auth_router(auth_backend)
 BASE_DIR = Path(__file__).resolve().parent
@@ -19,11 +22,9 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 SITE_URL = os.getenv("SITE_URL")
 EMAIL_REGEX = re.compile(r"[^@]+@[^@]+\.[^@]+")
 HELP_COMMAND = f"Hi!\nList of awailable commands:\n/register for registration\n\
-/login for login\n/logout for logout\n/get_all to get all notes\n/get_one to get one by id\n\
-/add_one to add one note\n/fix_one to change note by its id\n/delete to delete note by id\n\
+/login for login\n/logout for logout\n/get_all to get all notes\n\
+/add_one to add one note\n\
 /find_tags to find notes by tags"
-cookie_jwt = ""
-message_router = Router()
 
 
 @message_router.message(Command(commands=["help", "start"]))
@@ -109,13 +110,62 @@ async def login_finish(message: types.Message, state: FSMContext):
 @message_router.message(Command("get_all"))
 async def get_all_notes(message: types.Message):
     value = await redis.get(name = str(message.from_user.id))
-    await message.answer(value)
-    if cookie_jwt == "":
+    value = str(value, encoding='utf-8')
+    if not value:
         await message.answer("You are not authorized")
         return
     link = SITE_URL + "/notes"
-    r = requests.get(link, params={"jwt": cookie_jwt})
+    cookie = {
+    'jwt': value
+}
+    r = requests.get(link, cookies=cookie)
     await message.answer(r.text)
+
+@message_router.message(Command('add_one'))
+async def add_one_note(message: types.Message, state: FSMContext):
+    await state.set_state(CreateNote.name)
+    await message.answer(text="Enter note title.")
+
+@message_router.message(CreateNote.name)
+async def add_one_note_text(message : types.Message, state : FSMContext):
+    await state.update_data(name=message.text)
+    await state.set_state(CreateNote.content)
+    await message.answer(text="Enter title content.")
+
+@message_router.message(CreateNote.content)
+async def add_one_note_tags(message : types.Message, state : FSMContext):
+    await state.update_data(content = message.text)
+    await state.set_state(CreateNote.tags)
+    value = bytearray(pickle.dumps([]))
+    await redis.set(name=str(message.from_user.id) + "tags", value=value)
+    await message.answer(text="Enter each tag by a single message. To stop type ready.")
+
+@message_router.message(CreateNote.tags)
+async def add_one_note_end(message : types.Message, state : FSMContext):
+    if message.text != "ready":
+        tag = await state.update_data(content = message.text)
+        await message.answer(text=f"Tag {message.text} added")
+        value = await redis.get(name=str(message.from_user.id) + "tags")
+        value = pickle.loads(value)
+        value.append(tag)
+        value = bytearray(pickle.dumps(value))
+        await redis.set(name=str(message.from_user.id) + "tags", value=value)
+    else:
+        tags = await redis.get(name=str(message.from_user.id)+"tags")
+        tags = pickle.loads(tags)
+        value = await redis.get(name = str(message.from_user.id))
+        value = str(value, encoding='utf-8')
+        print(tags)
+        new_note = NoteAdd(CreateNote.name, CreateNote.content, tags)
+        link = SITE_URL + "/notes"
+        r = requests.post(link, data=new_note.json(), cookies={'jwt':value})
+        if r.status_code != 200:
+            await message.answer('Validation error, or you are not authorized.')
+        else:
+            await message.answer(r.text)
+
+
+
 
 
 @message_router.message()
