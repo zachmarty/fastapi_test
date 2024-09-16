@@ -1,15 +1,19 @@
 import datetime
 from sqlalchemy import select
-from models import Notes, Tags, new_session
-from schemas import NoteAdd, NoteFix, TagSearch
+from fastapi_server.models import Notes, Tags, new_session
+from fastapi_server.schemas import NoteAdd, NoteFix, TagSearch
+import fastapi_users
 
 class NoteORM:
+
     @classmethod
-    async def add_one(cls, data: NoteAdd):
+    async def add_one(cls, data: NoteAdd, id : int):
         async with new_session() as session:
+            print(id)
             note_dict = data.model_dump()
             tags_dict = note_dict.pop('tags')
             note = Notes(**note_dict)
+            note.user_id = id
             session.add(note)
             await session.flush()
             await session.commit()
@@ -19,6 +23,7 @@ class NoteORM:
                 session.add(tag)
             await session.flush()
             await session.commit()
+            return 'ok'
 
     @classmethod
     async def get_all(cls):
@@ -50,8 +55,9 @@ class NoteORM:
             return note
         
     @classmethod
-    async def update_one(cls, id, data : NoteAdd):
+    async def update_one(cls, id, data : NoteAdd, user):
         async with new_session() as session:
+            print(user)
             note_dict = data.model_dump()
             tags_dict = note_dict.pop('tags')
             query = select(Notes).where(Notes.id == id)
@@ -59,6 +65,8 @@ class NoteORM:
             note = result.scalars().first()
             if note is None:
                 return 'not found'
+            if note.user_id != user.id:
+                return "not allowed"
             note_dict.update({'last_update':datetime.datetime.now()})
             for key, value in note_dict.items():
                 setattr(note, key, value)
@@ -86,7 +94,7 @@ class NoteORM:
             return output
 
     @classmethod
-    async def fix_one(cls, id, data : NoteFix):
+    async def fix_one(cls, id, data : NoteFix, user_id : int):
         async with new_session() as session:
             note_dict = data.model_dump()
             tags_dict = note_dict.pop('tags')
@@ -95,6 +103,8 @@ class NoteORM:
             note = result.scalars().first()
             if note is None:
                 return 'not found'
+            if note.user_id != user_id:
+                return "not allowed"
             note_dict.update({'last_update':datetime.datetime.now()})
             for key, value in note_dict.items():
                 setattr(note, key, value) if value else None
@@ -123,13 +133,15 @@ class NoteORM:
             return output
         
     @classmethod
-    async def delete_one(cls, id):
+    async def delete_one(cls, id, user_id):
         async with new_session() as session:
             query = select(Notes).where(Notes.id == id)
             result = await session.execute(query)
             note = result.scalars().first()
             if note is None:
                 return 'not found'
+            if note.user_id != user_id:
+                return "not_allowed"
             await session.delete(note)
             await session.commit()
             return 'ok'
