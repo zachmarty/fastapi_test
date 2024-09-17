@@ -4,7 +4,7 @@ from typing import AsyncGenerator
 
 from fastapi import Depends
 from fastapi_users.db import SQLAlchemyUserDatabase, SQLAlchemyBaseUserTable
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, Integer
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from dotenv import load_dotenv
@@ -28,9 +28,11 @@ class User(SQLAlchemyBaseUserTable[int], Base):
 engine = create_async_engine(DATABASE_URL)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
+
 async def drop_user_db():
     async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.drop_all)
+
 
 async def create_db_and_tables():
     async with engine.begin() as conn:

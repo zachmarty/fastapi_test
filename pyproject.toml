@@ -20,6 +20,7 @@ requests = "^2.32.3"
 redis = "^5.0.8"
 apscheduler = "^3.10.4"
 aioredis = "^2.0.1"
+binary = "^1.0.0"
 
 
 [build-system]

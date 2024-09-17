@@ -82,7 +82,7 @@ async def register_finish(message: types.Message, state: FSMContext):
                 f"Registration completed.\nYour data is {data['email']} {data['password']}.\nNow you can login /login."
             )
     except requests.exceptions.ConnectionError as e:
-        await message.answer(text="Something went wrong.")
+        await message.answer(text=f"Something went wrong. {str(e)}")
     await state.clear()
 
 

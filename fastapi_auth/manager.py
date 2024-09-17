@@ -1,11 +1,10 @@
 import os
 from pathlib import Path
-import uuid
 from typing import Optional
 
 from fastapi import Depends, Request
 from fastapi_users.exceptions import UserAlreadyExists
-from fastapi_users import BaseUserManager, UUIDIDMixin, IntegerIDMixin
+from fastapi_users import BaseUserManager, IntegerIDMixin
 
 from fastapi_auth.models import User, get_user_db
 from dotenv import load_dotenv
@@ -16,11 +15,14 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 SECRET = os.getenv("AUTH_SECRET")
 
+
 class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
 
-    async def on_after_register(self, user: User, request: Request | None = None) -> None:
+    async def on_after_register(
+        self, user: User, request: Request | None = None
+    ) -> None:
         print(f"User {user.id} has registrated.")
 
     async def create(
@@ -63,6 +65,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         await self.on_after_register(created_user, request)
 
         return created_user
-    
-async def get_user_manager(user_db = Depends(get_user_db)):
+
+
+async def get_user_manager(user_db=Depends(get_user_db)):
     yield UserManager(user_db)
