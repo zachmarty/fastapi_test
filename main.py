@@ -10,6 +10,10 @@ from fastapi_server.router import router as notes_router
 from fastapi_auth.auth import auth_backend
 
 
+"""
+Файл инициализации fastapi приложения
+"""
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await drop_tables()

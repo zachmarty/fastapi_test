@@ -17,6 +17,9 @@ engine = create_async_engine(DATABASE_URL, echo=True)
 
 new_session = async_sessionmaker(engine, expire_on_commit=False)
 
+"""
+Файл с описанием моделей заметок и тегов
+"""
 
 class Base(DeclarativeBase):
     pass

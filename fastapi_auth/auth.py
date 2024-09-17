@@ -7,6 +7,10 @@ from fastapi_users.authentication import (
 )
 from dotenv import load_dotenv
 
+"""
+Подключение стандартной jwt авторизации
+"""
+
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 cookie_transport = CookieTransport(cookie_name="jwt", cookie_max_age=3600)
 

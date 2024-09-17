@@ -1,5 +1,7 @@
 from fastapi_users import schemas
-
+"""
+Схемы для работы с пользователями
+"""
 
 class UserRead(schemas.BaseUser[int]):
     id: int

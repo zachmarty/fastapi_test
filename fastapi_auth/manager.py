@@ -14,6 +14,10 @@ from fastapi_users import schemas, models
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 SECRET = os.getenv("AUTH_SECRET")
+"""
+Менеджер для работы с пользователями. Здесь немного изменен метод create
+для того чтобы поля is_active, is_verified по умолчанию были True
+"""
 
 
 class UserManager(IntegerIDMixin, BaseUserManager[User, int]):

@@ -16,6 +16,9 @@ DB_NAME = os.getenv("DB_NAME")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 
+"""
+Стандартное подключение моделей для базы данных
+"""
 
 class Base(DeclarativeBase):
     pass

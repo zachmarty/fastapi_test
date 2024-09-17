@@ -3,11 +3,18 @@ from sqlalchemy import select
 from fastapi_server.models import Notes, Tags, new_session
 from fastapi_server.schemas import NoteAdd, NoteFix, TagSearch
 
-
+"""
+Класс для работы с заметками и тегами
+"""
 class NoteORM:
+
+    
 
     @classmethod
     async def add_one(cls, data: NoteAdd, id: int):
+        """
+        Эндпоинт добавления заметки
+        """
         async with new_session() as session:
             print(id)
             note_dict = data.model_dump()
@@ -27,6 +34,9 @@ class NoteORM:
 
     @classmethod
     async def get_all(cls):
+        """
+        Эндпоинт получения списка всех заметок с их тегами
+        """
         async with new_session() as session:
             query = select(Notes)
             result = await session.execute(query)
@@ -41,6 +51,9 @@ class NoteORM:
 
     @classmethod
     async def get_one(cls, id):
+        """
+        Эндпоинт получения одной заметки по id
+        """
         async with new_session() as session:
             query = select(Notes).where(Notes.id == id)
             result = await session.execute(query)
@@ -56,6 +69,9 @@ class NoteORM:
 
     @classmethod
     async def update_one(cls, id, data: NoteAdd, user):
+        """
+        Эндпоинт обновзения заметки методом put
+        """
         async with new_session() as session:
             print(user)
             note_dict = data.model_dump()
@@ -97,6 +113,9 @@ class NoteORM:
 
     @classmethod
     async def fix_one(cls, id, data: NoteFix, user_id: int):
+        """
+        Эндпоинт обновления заметки методом patch
+        """
         async with new_session() as session:
             note_dict = data.model_dump()
             tags_dict = note_dict.pop("tags")
@@ -138,6 +157,9 @@ class NoteORM:
 
     @classmethod
     async def delete_one(cls, id, user_id):
+        """
+        Эндпоинт удаления заметки
+        """
         async with new_session() as session:
             query = select(Notes).where(Notes.id == id)
             result = await session.execute(query)
@@ -152,6 +174,9 @@ class NoteORM:
 
     @staticmethod
     async def find_child_tags(note: Notes):
+        """
+        Вспомогательная функция для нахождения дочерних тегов
+        """
         async with new_session() as session:
             query = select(Tags).where(Tags.note_id == note.id)
             result = await session.execute(query)
@@ -160,6 +185,9 @@ class NoteORM:
 
     @classmethod
     async def tag_search(cls, tags: TagSearch):
+        """
+        Эндпоинт нахождения заметок по тегам
+        """
         async with new_session() as session:
             tag_dict = tags.model_dump()
             broken_tags = []

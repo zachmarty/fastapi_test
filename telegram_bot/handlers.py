@@ -13,6 +13,12 @@ from main import fastapi_users
 from redis.asyncio import Redis
 from aiogram.fsm.state import StatesGroup, State
 
+"""Файл для работы с коммандами телеграм бота"""
+
+
+"""
+Состояния для реализации машин состояний
+"""
 class Register(StatesGroup):
     email = State()
     password = State()
@@ -43,18 +49,18 @@ HELP_COMMAND = f"Hi!\nList of awailable commands:\n/register for registration\n\
 /add_one to add one note\n\
 /find_tags to find notes by tags"
 
-
+"""Ответ на помощь или начало общения"""
 @message_router.message(Command(commands=["help", "start"]))
 async def handle_start(message: types.Message):
     await message.answer(text=HELP_COMMAND)
 
-
+"""Ответ на команду регистрации"""
 @message_router.message(Command("register"))
 async def register(message: types.Message, state: FSMContext):
     await state.set_state(Register.email)
     await message.answer(text="Enter your email.")
 
-
+"""Получение почты"""
 @message_router.message(Register.email)
 async def register_pass(message: types.Message, state: FSMContext):
     await state.update_data(email=message.text)
@@ -62,9 +68,9 @@ async def register_pass(message: types.Message, state: FSMContext):
         await message.answer("Wrong email. Try again.")
     else:
         await state.set_state(Register.password)
-        await message.answer(text="Enter your пароль.")
+        await message.answer(text="Enter your password.")
 
-
+"""Получение пароля и завершение регистрации"""
 @message_router.message(Register.password)
 async def register_finish(message: types.Message, state: FSMContext):
     await state.update_data(password=message.text)
@@ -85,13 +91,13 @@ async def register_finish(message: types.Message, state: FSMContext):
         await message.answer(text=f"Something went wrong. {str(e)}")
     await state.clear()
 
-
+"""Ответ на команду логин"""
 @message_router.message(Command("login"))
 async def login(message: types.Message, state: FSMContext):
     await state.set_state(Login.email)
     await message.answer(text="Enter your email.")
 
-
+"""Получение почты"""
 @message_router.message(Login.email)
 async def login_password(message: types.Message, state: FSMContext):
     await state.update_data(email=message.text)
@@ -101,7 +107,7 @@ async def login_password(message: types.Message, state: FSMContext):
         await state.set_state(Login.password)
         await message.answer(text="Enter your пароль.")
 
-
+"""Получение пароля и завершение авторизации"""
 @message_router.message(Login.password)
 async def login_finish(message: types.Message, state: FSMContext):
     await state.update_data(password=message.text)
@@ -123,7 +129,7 @@ async def login_finish(message: types.Message, state: FSMContext):
         await message.answer(text="Something went wrong.")
     await state.clear()
 
-
+"""Ответ на команду получить все заметки"""
 @message_router.message(Command("get_all"))
 async def get_all_notes(message: types.Message):
     value = await redis.get(name = str(message.from_user.id))
@@ -137,18 +143,20 @@ async def get_all_notes(message: types.Message):
 }
     r = requests.get(link, cookies=cookie)
     await message.answer(r.text)
-
+"""Ответ на команду создать одну заметку"""
 @message_router.message(Command('add_one'))
 async def add_one_note(message: types.Message, state: FSMContext):
     await state.set_state(CreateNote.name)
     await message.answer(text="Enter note title.")
 
+"""Получение наименования"""
 @message_router.message(CreateNote.name)
 async def add_one_note_text(message : types.Message, state : FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(CreateNote.content)
     await message.answer(text="Enter title content.")
 
+"""Получение содержимого"""
 @message_router.message(CreateNote.content)
 async def add_one_note_tags(message : types.Message, state : FSMContext):
     await state.update_data(content = message.text)
@@ -157,6 +165,7 @@ async def add_one_note_tags(message : types.Message, state : FSMContext):
     await redis.set(name=str(message.from_user.id) + "tags", value=value)
     await message.answer(text="Enter each tag by a single message. To stop type ready.")
 
+"""Получение тегов и завершение создания заметки"""
 @message_router.message(CreateNote.tags)
 async def add_one_note_end(message : types.Message, state : FSMContext):
     if message.text != "ready":
@@ -187,11 +196,13 @@ async def add_one_note_end(message : types.Message, state : FSMContext):
             await message.answer(r.text)
         await state.clear()
 
+"""Ответ на команду поиск заметок по тегам"""
 @message_router.message(Command('find_tags'))
 async def find_tags(message : types.Message, state : FSMContext):
     await state.set_state(SearchNote.tags)
     await message.answer(text="Enter each tag by a single message. To stop type ready.")
 
+"""Получение тегов и завершение поиска"""
 @message_router.message(SearchNote.tags)
 async def find_tags_end(message : types.Message, state : FSMContext):
     text = message.text
@@ -220,7 +231,7 @@ async def find_tags_end(message : types.Message, state : FSMContext):
 
 
 
-
+"""Ответ на остальные сообщения"""
 @message_router.message()
 async def echo(message: types.Message):
     await message.answer(text="Unkown command. To get commands type /help.")
