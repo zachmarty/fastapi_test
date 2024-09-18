@@ -20,6 +20,7 @@ DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME
 Стандартное подключение моделей для базы данных
 """
 
+
 class Base(DeclarativeBase):
     pass
 

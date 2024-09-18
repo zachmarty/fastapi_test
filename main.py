@@ -14,6 +14,7 @@ from fastapi_auth.auth import auth_backend
 Файл инициализации fastapi приложения
 """
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await drop_tables()

@@ -22,7 +22,7 @@ current_user = fastapi_users.current_user()
 """
 
 
-@router.get("/") 
+@router.get("/")
 async def get_notes(user: User = Depends(current_user)):
     """
     Роут на получение всех заметки

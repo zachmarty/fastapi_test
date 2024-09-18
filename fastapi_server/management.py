@@ -6,9 +6,9 @@ from fastapi_server.schemas import NoteAdd, NoteFix, TagSearch
 """
 Класс для работы с заметками и тегами
 """
-class NoteORM:
 
-    
+
+class NoteORM:
 
     @classmethod
     async def add_one(cls, data: NoteAdd, id: int):

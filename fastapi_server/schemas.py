@@ -7,6 +7,7 @@ from pydantic import BaseModel
 Схемы для работы с тегами и заметками
 """
 
+
 class TagBase(BaseModel):
     id: int
     name: str
